@@ -2,6 +2,8 @@
 
 이 프로젝트는 메모리 기반의 B+트리를 먼저 디스크 기반의 B+트리로 전환한 후, 디스크 기반의 B+트리에 버퍼 매니저 계층을 추가하고, 멀티스레드 환경에서 동시성 제어와 트랜잭션 관리, 복구 알고리즘을 구현하는 것입니다.
 
+# 요약
+
 ## 1. Memory 기반 B+트리에서 On-Disk B+ 트리로의 전환
 
 ### Page
@@ -46,11 +48,49 @@
 
 성적 : A+
 
+# 구현 Detail
 
-![5](https://github.com/csh7733/DBMS/assets/149491102/a815eeef-f1bb-4ee5-af74-db983f38bb9e)
-![6](https://github.com/csh7733/DBMS/assets/149491102/7ab10607-16d4-4fd5-98be-e475d89046ca)
-![7](https://github.com/csh7733/DBMS/assets/149491102/097736b1-9dd0-47f3-8f35-2c211e6ff3eb)
-![8](https://github.com/csh7733/DBMS/assets/149491102/7e5f6dea-4a06-4341-b6a4-9eb4da2b8554)
+## Concurrency Control Implementation
+
+동시성 제어는 DBMS에서 여러 트랜잭션을 효과적으로 관리하여 일관성(Consistency)과 고립성(Isolation)을 보장합니다. 이는 트랜잭션 간의 충돌로 발생하는 Lost Update, Inconsistent Reads, Dirty Reads와 같은 문제를 해결합니다. 목표는 성능과 데이터 무결성을 유지하면서 충돌 직렬 가능한 스케줄로 트랜잭션을 실행하는 것입니다.
+
+1. **2단계 잠금(Two-Phase Locking, 2PL):**
+   - **공유 잠금(Shared Lock)**: 레코드를 읽기 전에 필요하며, 여러 트랜잭션이 동시에 공유 잠금을 가질 수 있습니다.
+   - **전용 잠금(Exclusive Lock)**: 레코드를 쓰기 전에 필요하며, 한 트랜잭션만 전용 잠금을 가질 수 있습니다.
+   - **Strict 2PL**: 트랜잭션이 커밋되거나 중단될 때까지 잠금을 유지하여 연쇄 중단(Cascading Abort)을 방지하고 동시성 제어를 강화합니다.
+
+2. **교착 상태 감지 및 해결:**
+   - 대기 그래프를 사용하여 사이클을 탐지하고, 이는 교착 상태를 나타냅니다. 교착 상태가 발견되면, 해당 트랜잭션을 중단하여 문제를 해결합니다.
+
+#### 구현 단계:
+1. **파일 및 인덱스 관리 계층**에서 읽거나 쓸 레코드를 찾기 위해 **버퍼 관리 계층**에서 해당 페이지를 찾습니다.
+2. **버퍼 관리자 래치**에 대한 잠금을 획득하고, 해당 페이지에 대한 잠금을 획득한 후 버퍼 관리자 래치를 해제합니다.
+3. 이제 **잠금 관리자 래치**를 획득한 후, 잠금 관리자의 해시 테이블을 통해 해당 `<table_id, key>`가 있는 곳으로 이동하여 해당 레코드 잠금을 연결 리스트에 매답니다. 이때 대기 그래프와 DFS 탐색을 통해 사이클이 있는지를 확인하고, 사이클이 있다면 해당 트랜잭션을 중단하고, 그렇지 않으면 정상적으로 진행합니다.
+4. 상황에 따라 레코드 잠금을 바로 획득하거나 잠시 대기 후 깨어나서 레코드 잠금을 획득합니다. 이때 잠금 관리자 래치를 해제합니다.
+5. 해당 레코드에 관련된 읽기, 쓰기를 수행하고, 쓰기인 경우 수정된 작업을 버퍼에 갱신합니다.
+6. 트랜잭션 내 모든 읽기, 쓰기에 대해 1~5 단계를 수행한 후 커밋이나 중단을 통해 트랜잭션이 종료되면 해당 트랜잭션의 모든 잠금을 해제합니다. 이때 잠들어 있는 잠금들을 깨웁니다.
+7. 이후 버퍼에 기록된 페이지가 축출되거나 프로그램이 종료되면서 버퍼 관리 -> 디스크 공간 관리 -> 데이터베이스에 정상적으로 갱신됩니다.
+
+동시성 제어를 통해 여러 트랜잭션들이 동시에 수행될 수 있습니다.
+
+## Crash-Recovery Implementation
+
+크래시 이후의 복구는 트랜잭션 관리자를 통해 파일 및 인덱스 관리, 버퍼 관리, 디스크 공간 관리 계층에 걸쳐 구현됩니다. 크래시-복구의 주요 목적은 원자성(Atomicity)과 지속성(Durability)을 보장하여 DBMS의 ACID 특성을 유지하는 것입니다.
+
+1. **분석 단계 (Analysis Phase):**
+   - 로그 파일을 로드하여 각 트랜잭션의 커밋이나 중단 여부를 확인하고, 정상 종료된 트랜잭션은 Winner, 비정상 종료된 트랜잭션은 Loser로 분류합니다.
+
+2. **REDO 단계:**
+   - 모든 Winner와 Loser의 Write 및 보상 로그(Compensate Log)에 대해 REDO를 수행합니다. 로그에 있는 페이지의 pageLSN이 현재 로그의 LSN보다 크다면 CONSIDER-REDO를 합니다.
+
+3. **UNDO 단계:**
+   - Loser들의 모든 Write 및 보상 로그에 대해 UNDO를 수행하고, 이후 보상 로그를 생성합니다. 보상 로그에는 NextUndoSeqNo 변수가 있어 복구 후 다시 크래시가 발생해도 UNDO할 횟수를 줄일 수 있습니다.
+
+이러한 단계들을 통해 DBMS는 크래시 이전 상태로 돌아갈 수 있으며, 원자성과 지속성을 보장하게 됩니다. 여러 트랜잭션들이 동시에 수행되면서도 DBMS가 크래시가 나더라도 정상적으로 복구할 수 있습니다.
+
+## In-depth Analysis(1). Workload with many concurrent non-conflicting read-only transactions
 ![9](https://github.com/csh7733/DBMS/assets/149491102/b9a02d4c-7ec3-447c-bd31-5145e6ce1661)
 ![10](https://github.com/csh7733/DBMS/assets/149491102/be26f025-ada4-4cbf-8abf-547052825895)
+
+## In-depth Analysis(2). Workload with many concurrent non-conflicting write-only transactions.
 ![11](https://github.com/csh7733/DBMS/assets/149491102/50f00943-7f74-4111-bbac-14978ab4759c)
