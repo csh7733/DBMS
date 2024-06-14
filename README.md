@@ -14,6 +14,8 @@
 ### 4. 복구 알고리즘
 Analysis-Redo-Undo 3단계 복구 알고리즘을 구현하여 DB의 Atomicity와 Durability를 보장합니다. 로그를 통해 변경 사항을 기록하고, WAL (Write Ahead Logging) 원칙을 준수합니다. 로그 타입에는 commit, update, rollback, begin, compensate가 있으며, 복구 시 로그 파일을 읽어와 DB를 원래 상태로 복구합니다.
 
+성적 : A+
+
 ![1](https://github.com/csh7733/DBMS/assets/149491102/33f2d26d-0f3e-4227-a260-ccc604edd67a)
 ![2](https://github.com/csh7733/DBMS/assets/149491102/f07534c2-7a85-428e-932c-14aac48de3ec)
 ![3](https://github.com/csh7733/DBMS/assets/149491102/4079c5f6-3dd2-4f7f-be28-8252a778d87f)
