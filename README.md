@@ -16,10 +16,7 @@ Analysis-Redo-Undo 3단계 복구 알고리즘을 구현하여 DB의 Atomicity�
 
 성적 : A+
 
-![1](https://github.com/csh7733/DBMS/assets/149491102/33f2d26d-0f3e-4227-a260-ccc604edd67a)
-![2](https://github.com/csh7733/DBMS/assets/149491102/f07534c2-7a85-428e-932c-14aac48de3ec)
-![3](https://github.com/csh7733/DBMS/assets/149491102/4079c5f6-3dd2-4f7f-be28-8252a778d87f)
-![4](https://github.com/csh7733/DBMS/assets/149491102/73ade016-2ed0-450c-b9b2-93e038bdfbd1)
+
 ![5](https://github.com/csh7733/DBMS/assets/149491102/a815eeef-f1bb-4ee5-af74-db983f38bb9e)
 ![6](https://github.com/csh7733/DBMS/assets/149491102/7ab10607-16d4-4fd5-98be-e475d89046ca)
 ![7](https://github.com/csh7733/DBMS/assets/149491102/097736b1-9dd0-47f3-8f35-2c211e6ff3eb)
