@@ -43,7 +43,7 @@
 ## 4. 트랜잭션 관리자
 -트랜잭션의 시작(begin), 커밋(commit), 데이터 업데이트 및 조회(find) 기능을 지원합니다. 트랜잭션 시작 시 객체를 생성하고, 종료 시 커밋을 통해 락을 해제합니다. 데드락이 감지되면 해당 트랜잭션을 즉시 중단하고, 모든 락을 해제합니다. 동시성 제어를 위해 추가적인 mutex (버퍼 래치, 트랜잭션 래치)를 사용합니다.
 
-## 5. 복구 알고리즘
+## 5. 복구 알고리즘 - 구현 미완성
 -Analysis-Redo-Undo 3단계 복구 알고리즘을 구현하여 DB의 Atomicity와 Durability를 보장합니다. 로그를 통해 변경 사항을 기록하고, WAL (Write Ahead Logging) 원칙을 준수합니다. 로그 타입에는 commit, update, rollback, begin, compensate가 있으며, 복구 시 로그 파일을 읽어와 DB를 원래 상태로 복구합니다.
 
 # 구현 Detail
@@ -71,7 +71,7 @@
 
 동시성 제어를 통해 여러 transaction들이 동시에 수행될 수 있습니다.
 
-## Crash-Recovery Implementation
+## Crash-Recovery Implementation (구현 미완성)
 
 Crash 이후의 복구는 Transaction Manager를 통해 Files and Index Management, Buffer Management, Disk Space Management 계층에 걸쳐 구현됩니다. Crash-Recovery의 주요 목적은 Atomicity와 Durability를 보장하여 DBMS의 ACID 특성을 유지하는 것입니다.
 
