@@ -41,6 +41,11 @@ Buffer Manager는 Bpt Manager와 File Manager 사이의 중간 단계로서 다�
 
 LRU Policy: LRU 정책에 따라 페이지를 관리하며, Evict가 발생할 경우 디스크에 Flush하여 데이터의 일관성을 유지합니다.
 
+![image](https://github.com/user-attachments/assets/9285123b-5b14-40cf-ab55-ee197cca9310)
+
+![image](https://github.com/user-attachments/assets/491ba4c5-ada0-4bee-b060-2108795bbfbd)
+
+
 ## 3. 동시성 제어를 위한 Lock 테이블
 ### Lock Table(lock_table.cpp)
 Lock Table은 동시성 제어를 위해 사용되며, 여러 스레드가 동시에 데이터를 사용하려 할 때 충돌을 방지합니다. 주요 역할은 다음과 같습니다:
@@ -55,10 +60,13 @@ Lock Table은 동시성 제어를 위해 사용되며, 여러 스레드가 동�
 
 - 배타 락(X Lock): 한 트랜잭션이 데이터를 갱신할 때 사용됩니다. X Lock이 걸려 있는 동안에는 다른 트랜잭션이 S Lock이나 X Lock을 획득할 수 없습니다.
 
-락 획득 및 대기: 트랜잭션이 S Lock을 획득하려는 경우, 이미 다른 트랜잭션이 X Lock을 가지고 있지 않으면 S Lock을 획득할 수 있습니다.
+락 획득 및 대기: 트랜잭션이 S Lock을 획득하려는 경우, 앞에있는 다른 트랜잭션이 X Lock을 가지고 있지 않으면 S Lock을 획득할 수 있습니다.
 트랜잭션이 X Lock을 획득하려는 경우, 다른 트랜잭션이 S Lock이나 X Lock을 가지고 있으면 대기해야 합니다.
 
 락 해제 및 깨움: 트랜잭션이 데이터를 사용한 후 락을 해제하면, 대기 중인 다른 트랜잭션이 락을 획득할 수 있도록 깨웁니다.
+
+![image](https://github.com/user-attachments/assets/8e211b56-be60-4e81-b172-644f2125e723)
+
 
 ## 4. 트랜잭션 관리자(trx.cpp)
 -트랜잭션의 시작(begin), 커밋(commit), Abort를 지원합니다. 트랜잭션 시작 시 객체를 생성하고, 락을 휙득할때마다 해당 트랜잭션 객체의 lock_list에 lock을 추가합니다. 만약 commit시 트랜잭션 내의 잡고있던 모든 락을 해제합니다. 만약 데드락이 감지되면 해당 트랜잭션을 즉시 중단하고, trx의 lock리스트를 따라서 하나씩 release를 해주는데 이때 write를 한 경우 저장된 변경전값을 바탕으로 rollback을 합니다.
