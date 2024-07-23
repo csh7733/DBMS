@@ -41,6 +41,11 @@ Buffer Manager는 Bpt Manager와 File Manager 사이의 중간 단계로서 다�
 
 LRU Policy: LRU 정책에 따라 페이지를 관리하며, Evict가 발생할 경우 디스크에 Flush하여 데이터의 일관성을 유지합니다.
 
+![image](https://github.com/user-attachments/assets/9285123b-5b14-40cf-ab55-ee197cca9310)
+
+![image](https://github.com/user-attachments/assets/491ba4c5-ada0-4bee-b060-2108795bbfbd)
+
+
 ## 3. 동시성 제어를 위한 Lock 테이블
 ### Lock Table(lock_table.cpp)
 Lock Table은 동시성 제어를 위해 사용되며, 여러 스레드가 동시에 데이터를 사용하려 할 때 충돌을 방지합니다. 주요 역할은 다음과 같습니다:
@@ -55,13 +60,35 @@ Lock Table은 동시성 제어를 위해 사용되며, 여러 스레드가 동�
 
 - 배타 락(X Lock): 한 트랜잭션이 데이터를 갱신할 때 사용됩니다. X Lock이 걸려 있는 동안에는 다른 트랜잭션이 S Lock이나 X Lock을 획득할 수 없습니다.
 
-락 획득 및 대기: 트랜잭션이 S Lock을 획득하려는 경우, 이미 다른 트랜잭션이 X Lock을 가지고 있지 않으면 S Lock을 획득할 수 있습니다.
+락 획득 및 대기: 트랜잭션이 S Lock을 획득하려는 경우, 앞에있는 다른 트랜잭션이 X Lock을 가지고 있지 않으면 S Lock을 획득할 수 있습니다.
 트랜잭션이 X Lock을 획득하려는 경우, 다른 트랜잭션이 S Lock이나 X Lock을 가지고 있으면 대기해야 합니다.
 
 락 해제 및 깨움: 트랜잭션이 데이터를 사용한 후 락을 해제하면, 대기 중인 다른 트랜잭션이 락을 획득할 수 있도록 깨웁니다.
 
+![image](https://github.com/user-attachments/assets/8e211b56-be60-4e81-b172-644f2125e723)
+
+
 ## 4. 트랜잭션 관리자(trx.cpp)
--트랜잭션의 시작(begin), 커밋(commit), Abort를 지원합니다. 트랜잭션 시작 시 객체를 생성하고, 락을 휙득할때마다 해당 트랜잭션 객체의 lock_list에 lock을 추가합니다. 만약 commit시 트랜잭션 내의 잡고있던 모든 락을 해제합니다. 만약 데드락이 감지되면 해당 트랜잭션을 즉시 중단하고, trx의 lock리스트를 따라서 하나씩 release를 해주는데 이때 write를 한 경우 저장된 변경전값을 바탕으로 rollback을 합니다.
+트랜잭션 관리자는 Begin, Commit, Abort를 지원합니다.
+
+### 트랜잭션 시작 (Begin)
+- 트랜잭션이 시작되면, 새로운 트랜잭션 객체가 생성됩니다.
+- 트랜잭션 객체는 해당 트랜잭션에서 획득한 락을 추적하기 위해 `lock_list`를 가지고 있습니다.
+- 락을 획득할 때마다 해당 락이 `lock_list`에 추가됩니다.
+
+### 트랜잭션 커밋 (Commit)
+- 트랜잭션이 커밋될 때, 트랜잭션 객체의 `lock_list`를 따라 모든 락을 해제합니다.
+- 트랜잭션이 성공적으로 완료되었음을 의미합니다.
+
+### 트랜잭션 중단 (Abort)
+- 트랜잭션 중단은 데드락이 감지되거나 다른 이유로 인해 트랜잭션을 더 이상 진행할 수 없을 때 발생합니다.
+- 중단 시, 트랜잭션 객체의 `lock_list`를 따라 하나씩 락을 해제합니다.
+- 이때 트랜잭션이 중단되었을 경우, 트랜잭션 동안 수행된 모든 Write작업을 저장된 변경 전 값(old_values)을 바탕으로 롤백합니다.
+
+### 데드락 감지 (Deadlock Detection)
+- 시스템은 주기적으로 `deadlock_check()` 함수를 통해 데드락을 감지합니다.
+- `wait-for-graph`를 탐색하여 사이클이 발견되면 데드락이 발생한 것으로 간주하고, 해당 트랜잭션을 중단(Abort)시킵니다.
+
 ## 5. 복구 알고리즘(log.cpp) - 구현 미완성
 -Analysis-Redo-Undo 3단계 복구 알고리즘을 구현하여 DB의 Atomicity와 Durability를 보장합니다. 로그를 통해 변경 사항을 기록하고, WAL (Write Ahead Logging) 원칙을 준수합니다. 로그 타입에는 commit, update, rollback, begin, compensate가 있으며, 복구 시 로그 파일을 읽어와 DB를 원래 상태로 복구합니다.
 
