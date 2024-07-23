@@ -17,13 +17,13 @@
 
 -Internal Page: 페이지 헤더 (부모 페이지, is leaf, key 개수, 첫 자식 페이지 번호), key와 페이지 번호
 
-### Bpt Manager
+### Bpt Manager(bpt.cpp)
 Bpt Manager는 B+ 트리 구조를 관리하는 역할을 합니다
 
 데이터 저장: 데이터를 페이지 단위로 B+ 트리에 저장합니다.
 
 삽입, 삭제 및 검색 작업: 데이터를 삽입, 삭제, 검색할 때는 루트 페이지부터 내부 페이지(internal page)를 따라가며, 실제 레코드가 있는 리프 페이지(leaf page)에 접근합니다.
-### File Manager
+### File Manager(file.cpp)
 File Manager는 Data File과 Bpt Manager 사이의 연결 고리 역할을 합니다.
 
 페이지 읽기/쓰기: Bpt Manager의 요청에 따라 디스크에서 페이지를 읽고 씁니다.
@@ -32,7 +32,7 @@ File Manager는 Data File과 Bpt Manager 사이의 연결 고리 역할을 합�
 
 ## 2. 버퍼 매니저 계층 추가
 -디스크 직접 읽기/쓰기의 시간 소요를 줄이기 위해 메모리 버퍼를 사용하여 페이지를 저장하고 관리합니다. 각 테이블은 고유의 아이디를 가지며, 다수의 테이블을 관리할 수 있습니다.
-### Buffer Manager
+### Buffer Manager(buffer.cpp)
 Buffer Manager는 Bpt Manager와 File Manager 사이의 중간 단계로서 다음과 같은 역할을 수행합니다
 
 페이지 요청 및 반환: Bpt Manager가 페이지를 요청하면 반환하고, 동시에 필요한 페이지를 File Manager에게 요청합니다.
@@ -42,7 +42,7 @@ Buffer Manager는 Bpt Manager와 File Manager 사이의 중간 단계로서 다�
 LRU Policy: LRU 정책에 따라 페이지를 관리하며, Evict가 발생할 경우 디스크에 Flush하여 데이터의 일관성을 유지합니다.
 
 ## 3. 동시성 제어를 위한 Lock 테이블
-### Lock Table
+### Lock Table(lock_table.cpp)
 Lock Table은 동시성 제어를 위해 사용되며, 여러 스레드가 동시에 데이터를 사용하려 할 때 충돌을 방지합니다. 주요 역할은 다음과 같습니다:
 
 해시 테이블 구조: Lock Table은 해시 테이블을 사용하여 관리됩니다. 해시 테이블의 각 항목은 <table_id, key>로 구분됩니다. 여기서 table_id는 테이블의 식별자이고, key는 레코드의 식별자입니다.
@@ -60,9 +60,9 @@ Lock Table은 동시성 제어를 위해 사용되며, 여러 스레드가 동�
 
 락 해제 및 깨움: 트랜잭션이 데이터를 사용한 후 락을 해제하면, 대기 중인 다른 트랜잭션이 락을 획득할 수 있도록 깨웁니다.
 
-## 4. 트랜잭션 관리자
+## 4. 트랜잭션 관리자(trx.cpp)
 -트랜잭션의 시작(begin), 커밋(commit), Abort를 지원합니다. 트랜잭션 시작 시 객체를 생성하고, 락을 휙득할때마다 해당 트랜잭션 객체의 lock_list에 lock을 추가합니다. 만약 commit시 트랜잭션 내의 잡고있던 모든 락을 해제합니다. 만약 데드락이 감지되면 해당 트랜잭션을 즉시 중단하고, trx의 lock리스트를 따라서 하나씩 release를 해주는데 이때 write를 한 경우 저장된 변경전값을 바탕으로 rollback을 합니다.
-## 5. 복구 알고리즘 - 구현 미완성
+## 5. 복구 알고리즘(log.cpp) - 구현 미완성
 -Analysis-Redo-Undo 3단계 복구 알고리즘을 구현하여 DB의 Atomicity와 Durability를 보장합니다. 로그를 통해 변경 사항을 기록하고, WAL (Write Ahead Logging) 원칙을 준수합니다. 로그 타입에는 commit, update, rollback, begin, compensate가 있으며, 복구 시 로그 파일을 읽어와 DB를 원래 상태로 복구합니다.
 
 # 구현 Detail
