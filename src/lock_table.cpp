@@ -58,17 +58,19 @@ lock_acquire(pagenum_t page,int table_id, int64_t key,int trx_id, int lock_mode)
 	lock->hash_table_entry->tailer->prev->next = lock;
 	lock->hash_table_entry->tailer->prev = lock;
 
-	//deadlock_check();
+	deadlock_check();
 
 	if(lock->lock_mode == 0){
 		if(lock->prev->is_sleep || lock->prev->lock_mode == 1){
 			lock->is_sleep = 1;
+			trx_wait(lock->prev->owner_trx_id, trx_id);
 			pthread_cond_wait(&lock->cond,&lock_manager_latch);
 		}
 	}
 	else if(lock->lock_mode == 1){
 		if(lock->prev != lock->hash_table_entry->header){
 			lock->is_sleep = 1;
+			trx_wait(lock->prev->owner_trx_id, trx_id);
 			pthread_cond_wait(&lock->cond,&lock_manager_latch);	
 		}
 	}
@@ -91,6 +93,7 @@ lock_release(lock_t* lock_obj)
 	if(lock_obj->lock_mode == 0){
 		if(lock_obj->prev == lock_obj->hash_table_entry->header && lock_obj->next->is_sleep){
 			if(lock_next->lock_mode == 1){
+				trx_wait_release(lock_next->owner_trx_id, lock_obj->owner_trx_id);
 				pthread_cond_signal(&lock_next->cond);
 				lock_next->is_sleep = 0;
 			}
@@ -98,11 +101,13 @@ lock_release(lock_t* lock_obj)
 	}
 	else if(lock_obj->lock_mode == 1){
 		if(lock_next->lock_mode == 1){
+			trx_wait_release(lock_next->owner_trx_id, lock_obj->owner_trx_id);
 			pthread_cond_signal(&lock_next->cond);
 			lock_next->is_sleep = 0;
 		}
 		else{
 			while(lock_next->lock_mode == 0){
+				trx_wait_release(lock_next->owner_trx_id, lock_next->prev->owner_trx_id);
 				pthread_cond_signal(&lock_next->cond);
 				lock_next->is_sleep = 0;
 				lock_next = lock_next->next;

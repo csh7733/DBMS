@@ -6,6 +6,7 @@
 #include "bpt.h"
 #include "file.h"
 #include "buffer.h"
+#include "trx.h"
 #include <lock_table.h>
 
 int internal_order = INTERNAL_ORDER;
@@ -303,7 +304,10 @@ char* update(int64_t key,int table_id,int trx_id,char*values){
 	else {
 		lock_t* l = lock_acquire(c_page,table_id,get_leaf_key_at_i(c, i),trx_id,1);
 		dolock(c_page,table_id);
-		//add_update(trx_id,1,table_id,c_page,i,get_leaf_value_at_i(c, i),values);
+
+		//char* old_value = get_leaf_value_at_i(c, i);
+        //save_old_value(trx_id, table_id, key, old_value, 0); // 0 for update
+
 		set_leaf_value_at_i(c,i,values);
 		write_buffer(c_page,(page_t*)c,table_id);
 		unlock(c_page,table_id);
@@ -732,6 +736,7 @@ void start_new_tree(int64_t key, char* value,int table_id) {
 int insert(int64_t key, char* value,int table_id) {
 
 	pagenum_t leaf_p;
+	//save_old_value(trx_id, table_id, key, nullptr, 2); // 2 for insert
 	if (find(key,table_id,-1) != NULL) // ignore duplicate
 		return -1; ///fail
 	/* Case: the tree does not exist yet.
@@ -1327,6 +1332,10 @@ int remove(int64_t key, int table_id) {
 	char* key_record;
 
 	key_record = find(key, table_id,-1);
+
+	//char* old_value = find(key, table_id,-1);
+    //save_old_value(trx_id, table_id, key, old_value, 0); 
+	
 	key_leaf = find_leaf(key, table_id,0);
 	if (key_record == NULL) return -1; // fail
 	if (key_record != NULL && key_leaf != 0) {
