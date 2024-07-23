@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include "file.h"
 #include "buffer.h"
+#include "trx.h"
 #include "lock_table.h"
 #ifdef WINDOWS
 #define bool char
