@@ -58,7 +58,7 @@ lock_acquire(pagenum_t page,int table_id, int64_t key,int trx_id, int lock_mode)
 	lock->hash_table_entry->tailer->prev->next = lock;
 	lock->hash_table_entry->tailer->prev = lock;
 
-	deadlock_check();
+	deadlock_check(trx_id);
 
 	if(lock->lock_mode == 0){
 		if(lock->prev->is_sleep || lock->prev->lock_mode == 1){
