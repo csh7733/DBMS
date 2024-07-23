@@ -6,7 +6,7 @@
 #include "lock_table.h"
 
 // 트랜잭션 간 대기 그래프와 이전 값 저장을 위한 자료 구조
-map<int, vector<int>> wait_for_graph;
+map<int, int> wait_for_graph;
 map<tuple<int, int, int64_t>, pair<char*, int>> old_values; // <(trx_id, table_id, key), (old_value, type)> 
 
 int trx_count = 1;
@@ -27,6 +27,7 @@ int trx_begin(void) {
 }
 
 // 트랜잭션 커밋
+// 모든 락을 해제한다
 int trx_commit(int trx_id) {
     pthread_mutex_lock(&trx_manager_latch);
     lock_t* now;
@@ -43,20 +44,19 @@ int trx_commit(int trx_id) {
     return trx_id;
 }
 
-// 트랜잭션 대기 상태 추가
+// 트랜잭션 대기 상태 추가(wait-for-graph)
 void trx_wait(int prev_trx_id, int cur_trx_id) {
     pthread_mutex_lock(&trx_manager_latch);
-    wait_for_graph[prev_trx_id].push_back(cur_trx_id);
+    wait_for_graph[cur_trx_id] = prev_trx_id;
     pthread_mutex_unlock(&trx_manager_latch);
 }
 
-// 트랜잭션 대기 상태 해제
+// 트랜잭션 대기 상태 해제(wait-for-graph)
 void trx_wait_release(int waiting_trx_id, int awakened_trx_id) {
     pthread_mutex_lock(&trx_manager_latch);
 
-    if (wait_for_graph.find(waiting_trx_id) != wait_for_graph.end()) {
-        auto& vec = wait_for_graph[waiting_trx_id];
-        vec.erase(remove(vec.begin(), vec.end(), awakened_trx_id), vec.end());
+    if (wait_for_graph.find(waiting_trx_id) != wait_for_graph.end() && wait_for_graph[waiting_trx_id] == awakened_trx_id) {
+        wait_for_graph.erase(waiting_trx_id);
     }
 
     pthread_mutex_unlock(&trx_manager_latch);
@@ -146,7 +146,7 @@ int trx_abort(int trx_id) {
         now->trx_next->trx_prev = now->trx_prev;
         now = now->trx_next;
         
-        if (temp->lock_mode == 1) { // xlock인 경우 rollback 호출
+        if (temp->lock_mode == 1) { // xlock인 경우 rollback 호출(write작업)
             auto it = old_values.find({trx_id, temp->table_id, temp->key});
             if (it != old_values.end()) {
                 rollback(temp->table_id, temp->key, trx_id, it->second.second);
