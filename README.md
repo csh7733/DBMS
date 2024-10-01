@@ -143,6 +143,3 @@ CLR은 다음에 수행할 UNDO 작업을 명시하고, 복구 도중 충돌이 
 ## In-depth Analysis(1). Workload with many concurrent non-conflicting read-only transactions
 ![9](https://github.com/csh7733/DBMS/assets/149491102/b9a02d4c-7ec3-447c-bd31-5145e6ce1661)
 ![10](https://github.com/csh7733/DBMS/assets/149491102/be26f025-ada4-4cbf-8abf-547052825895)
-
-## In-depth Analysis(2). Workload with many concurrent non-conflicting write-only transactions.
-![11](https://github.com/csh7733/DBMS/assets/149491102/50f00943-7f74-4111-bbac-14978ab4759c)
