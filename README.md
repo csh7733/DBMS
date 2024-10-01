@@ -118,17 +118,25 @@ Lock Table은 동시성 제어를 위해 사용되며, 여러 스레드가 동�
 동시성 제어를 통해 여러 transaction들이 동시에 수행될 수 있습니다.
 
 ## Crash-Recovery Implementation (구현 미완성)
+Crash-Recovery는 트랜잭션 매니저를 통해 Files and Index Management, Buffer Management, Disk Space Management 계층에 걸쳐 구현됩니다. 시스템 충돌 이후에도 Atomicity와 Durability를 보장하여 DBMS의 ACID 특성을 유지하는 것이 목표입니다.
 
-Crash 이후의 복구는 Transaction Manager를 통해 Files and Index Management, Buffer Management, Disk Space Management 계층에 걸쳐 구현됩니다. Crash-Recovery의 주요 목적은 Atomicity와 Durability를 보장하여 DBMS의 ACID 특성을 유지하는 것입니다.
+복구 과정은 세 가지 주요 단계로 이루어집니다: Analysis, REDO, UNDO.
 
-1. **Analysis Phase:**
-   - 로그 파일을 로드하여 각 transaction의 commit이나 abort 여부를 확인하고, 정상 종료된 transaction은 Winner, 비정상 종료된 transaction은 Loser로 분류합니다.
-
-2. **REDO Phase:**
-   - 모든 Winner와 Loser의 Write 및 Compensate Log에 대해 REDO를 수행합니다. 로그에 있는 페이지의 pageLSN이 현재 로그의 LSN보다 크다면 CONSIDER-REDO를 합니다.
-
-3. **UNDO Phase:**
-   - Loser들의 모든 Write 및 Compensate Log에 대해 UNDO를 수행하고, 이후 Compensate Log를 생성합니다. Compensate Log에는 NextUndoSeqNo 변수가 있어 복구 후 다시 crash가 발생해도 UNDO할 횟수를 줄일 수 있습니다.
+-------------------
+1. Analysis Phase :
+Analysis Phase에서는 Checkpoint 이후에 시작된 트랜잭션들의 상태를 분석합니다.
+각 트랜잭션의 commit이나 abort 여부를 확인하여, 정상 종료된 트랜잭션은 Winner, 비정상 종료된 트랜잭션은 Loser로 분류합니다.
+-------------------
+2. REDO Phase:
+REDO Phase에서는 Winner 트랜잭션의 변경 사항을 디스크에 다시 반영합니다.
+이 과정에서 pageLSN이 현재 로그의 LSN보다 작은 경우에만 REDO 작업(Consider-Redo)를 수행합니다. 즉, 변경 사항이 이미 디스크에 반영된 경우는 REDO를 생략하고, 반영되지 않은 경우에만 REDO를 진행합니다.
+정상적으로 롤백된 트랜잭션이나 UNDO가 완료된 트랜잭션에 대해서도 REDO 작업을 수행합니다. 이는 REDO가 UNDO의 효과를 반복하는 것과 동일하므로, 중복되는 UNDO 작업을 방지할 수 있습니다.
+-------------------
+3. UNDO Phase:
+UNDO Phase는 Loser 트랜잭션(중단된 트랜잭션)의 변경 사항을 되돌리는 단계입니다.
+Consider-Undo 방식을 사용하여 pageLSN을 기반으로 UNDO 작업을 수행합니다. **CLR(Compensation Log Record)**을 생성하여, 복구 중 Crash가 발생하더라도 다시 UNDO를 이어서 진행할 수 있도록 다음 UndoSeqNo를 기록합니다.
+CLR은 다음에 수행할 UNDO 작업을 명시하고, 복구 도중 충돌이 발생해도 이미 수행된 UNDO 작업을 중복으로 처리하지 않도록 보장합니다.
+-------------------
 
 이러한 단계들을 통해 DBMS는 crash 이전 상태로 돌아갈 수 있으며, Atomicity와 Durability를 보장하게 됩니다. 여러 transaction들이 동시에 수행되면서도 DBMS가 crash가 나더라도 정상적으로 복구할 수 있습니다.
 
